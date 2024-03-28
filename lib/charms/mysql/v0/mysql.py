@@ -114,7 +114,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 56
+LIBPATCH = 57
 
 UNIT_TEARDOWN_LOCKNAME = "unit-teardown"
 UNIT_ADD_LOCKNAME = "unit-add"
@@ -494,7 +494,13 @@ class MySQLCharmBase(CharmBase, ABC):
 
     def _get_cluster_status(self, event: ActionEvent) -> None:
         """Action used  to retrieve the cluster status."""
-        if status := self._mysql.get_cluster_status():
+        extended = event.params.get("extended", 0)
+
+        if not 0 <= extended < 4:
+            event.fail("Extended parameter outside valid range")
+            return
+
+        if status := self._mysql.get_cluster_status(extended):
             event.set_results(
                 {
                     "success": True,
@@ -1422,7 +1428,7 @@ class MySQLBase(ABC):
         stop=stop_after_attempt(3),
         retry=retry_if_exception_type(TimeoutError),
     )
-    def get_cluster_status(self, extended: Optional[bool] = False) -> Optional[dict]:
+    def get_cluster_status(self, extended: Optional[int] = 0) -> Optional[dict]:
         """Get the cluster status.
 
         Executes script to retrieve cluster status.
